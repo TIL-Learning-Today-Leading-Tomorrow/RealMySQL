@@ -159,3 +159,29 @@ InnoDB의 잠금은 레코드를 잠그는 것이 아니라 인덱스를 잠그�
 
 MySQL 5.1 부터는 information_schema라는 DB에 INNODB_TRX라는 테이블과 INNODB_LOCKS, INNODB_LOCK_WAITS라는 테이블을 통해 확인 가능하다.
 하지만, MySQL8.0버전 부터는 informaiton_schema의 정보들은 조금씩 deprecated 되었으며, Performance Schema의 data_locks와 data_lock_waits 테이블로 대체되고 있다.
+
+## 5.4 MySQL의 격리 수준
+
+|                  | DIRTY READ | NON-REPEATABLE READ | PHANTOM READ  |
+|------------------| --- | --- |---------------|
+| READ UNCOMMITTED | O | O | O             |
+| READ COMMITTED   | X | O | O             |
+| REPEATABLE READ  | X | X | O(innoDB는 없음) |
+| SERIALIZABLE     | X | X | X             |
+
+### 5.4.1 READ UNCOMMITTED
+READ UNCOMMITTED 격리 수준은 가장 낮은 격리 수준이다. 이 격리 수준에서는 다른 트랜잭션이 변경 중인 데이터를 읽을 수 있다. 이러한 현상을 `DIRTY READ`라고 한다.
+
+### 5.4.2 READ COMMITTED
+READ COMMITTED 격리 수준은 READ UNCOMMITTED 격리 수준보다 높은 격리 수준이다. 오라클 DBMS의 기본 격리 수준이며, 온라인 서비스에서 가장 많이 선택되는 격리 수준이다.
+이 격리 수준에서는 다른 트랜잭션이 변경 중인 데이터를 읽을 수 없다. 이러한 현상을 `NON-REPEATABLE READ`라고 한다.
+
+### 5.4.3 REPEATABLE READ
+REPEATABLE READ 격리 수준은 READ COMMITTED 격리 수준보다 높은 격리 수준이다. MySQL의 InnoDB 스토리지 엔진에서 기본으로 사용되는 격리 수준이다.
+InnoDB 스토리지 엔진은 트랜잭션이 ROLLBACK될 가능성에 대비해 변경되기 전 레코드를 언두 공간에 백업해두고 실제 레코드 값을 변경한다. 이러한 방식을 MVCC(Multi-Version Concurrency Control)라고 한다.
+이 격리 수준에서는 같은 쿼리를 실행해도 결과가 항상 같다. 이러한 현상을 `PHANTOM READ`라고 한다.
+
+
+### 5.4.4 SERIALIZABLE
+SERIALIZABLE 격리 수준은 가장 높은 격리 수준이다. 이 격리 수준에서는 트랜잭션 간에 완벽하게 격리되어 있어, 동시성 처리가 떨어지는 단점이 있다.
+InnoDB 스토리지 엔진에서는 갭 락과 넥스트 키 락 덕분에 REPEATABLE READ 격리 수준에서도 PHANTOM READ 현상이 발생하지 않기 때문에 SERIALIZABLE 격리 수준을 사용할 필요가 없다.
